@@ -1,47 +1,49 @@
-# project-212-Alhassliebe
+# Rifmoplet: a Rhyming Poetry Bot
 
-#### Работа выполнена студенткой Муравьевой Алёной ####
-
-### Про бот ###
-Результатом проекта стал **бот-рифмоплет**, который пишет стихи на английском языке по заданной тематике, метру, длине строки и, конечно, слову-ориентиру. ***@Eng_Rifmoplet_bot***. Бот размещен на pythonanywhere.com  
-Взаимодействие пользователя с ботом выглядит так:
+A Telegram bot ([@Eng_Rifmoplet_bot](https://t.me/Eng_Rifmoplet_bot)) that writes short English poems with a given theme, meter, line length and rhyme word. Instead of generating text, it picks lines from a book or film script and combines them so that syllable counts and rhymes fit. Individual project, HSE University, 2023.
 
 https://user-images.githubusercontent.com/90255314/227801810-6c228525-52a0-456f-a45d-0359c60198ca.MP4
 
-Как мы видим, сначала пользователю предлагается выбрать тематику стихотворения из трех предложенных (в дальнейшем именно из этой книги
-или из субтитров этого фильма будут браться строки для стихотворения).  
-Далее пользователю нужно выбрать метр стиха. Для простоты бот отправляет фото с пояснением того, что означает каждый метр.  
-После этого пользователь отправляет слово, с которым будет строиться стих, букву (A или В) -- то есть последним словом какой строки будет введенное слово -- 
-и размер строки от минимального до максимального (счет идет по слогам).  
-И на этом все! Бот выводит готовый стих. По желанию, нажав кнопку "YES!", можно на этих же данных построить уже другое стихотворение.  
-  
-Бот также оборудован командами   
-/start - запуск бота с самого начала  
-/cancel - остановка бота после его запуска  
-/help - краткий справочник с командами
+## How it works
 
-Бот написан при помощи библиотеки **python-telegram-bot**. На основе модуля расширений telegram.ext был построен асинхронный бот.
-Код, непосредственно связанный с ботом, лежит в файле **Botik.py**
+1. The user chooses a theme. Each theme is a source text: *Harry Potter and the Prisoner of Azkaban*, *The Godfather* or *Twilight*.
+2. The user chooses a meter. The bot sends a picture explaining each one.
+3. The user sends a seed word, says whether it should close line A or line B, and sets the minimum and maximum line length in syllables.
+4. The bot returns a poem. Pressing "YES!" builds another one with the same settings.
 
-### Про предобработку файлов ###
+Commands: `/start`, `/cancel`, `/help`.
 
-Файл **text_to_data.py** запускается предварительно независимо от бота. Он нужен для того, чтобы текстовые файлы с книгами и субтитрами были преобразованы в базы данных. 
-Текст делится на предложения (raw_text), в этих предложениях считаются слоги (syllable_count) и определяется рифма = последняя гласная + последующие согласные (rhyme).
-Это происходит благодаря самому-самому важному файлу **poem_creator.py**, в котором происходит вся грязная работа этого проекта.  
+## The phonetics behind it
 
-![db](https://user-images.githubusercontent.com/90255314/227803446-566ec944-9c4b-458d-a26c-af49e2389061.PNG)
+All the linguistic work happens in `poem_creator.py`.
 
-### Про самый-самый важный файл ###
+- Every word is looked up in the [CMU Pronouncing Dictionary](http://www.speech.cs.cmu.edu/cgi-bin/cmudict) (via NLTK). Vowel phonemes carry a stress mark from 0 to 2, so counting them gives the number of syllables.
+- The rhyme of a line is the cluster "last vowel + following consonants" of its final word.
 
-Как вы уже поняли, это **poem_creator.py**  
+![CMUdict example](https://user-images.githubusercontent.com/90255314/227804831-87d32312-2a9b-4531-934c-0cbe9dea15f6.PNG)
 
-В class Line происходит обработка строк. Берется транскрипция каждого слова из CMUdict (Словарь произношения Карнеги-Меллона) -- nltk.download('cmudict') --
-этот словарь для каждого слова возвращает список возможных произношений, отдельное произношение является массивом фонем. Фонетическая позиция гласного обозначена цифрой от 0 до 2 -
-именно по ним мы определяем гласный это звук или согласный. Число гласных в строке (=число слогов) задает syllable_count. Рифмой для строки является кластер "последняя гласная + последующие согласные"
-крайнего слова в строке.  
+## Preprocessing
 
-![cmudict](https://user-images.githubusercontent.com/90255314/227804831-87d32312-2a9b-4531-934c-0cbe9dea15f6.PNG)  
+`text_to_data.py` is run once before the bot. It splits each source text into sentences and stores every sentence with its syllable count and rhyme in an SQLite database (`hp.db`, `gf.db`, `tw.db`).
 
-В class DataBase происходит обработка баз данных. Как раз об этом мы говорили в пункте про предобработку файлов.  
+![Database](https://user-images.githubusercontent.com/90255314/227803446-566ec944-9c4b-458d-a26c-af49e2389061.PNG)
 
-Остальные функции в файле направлены уже на работу бота. В самом файле есть комментарии по каждой функции.
+## Files
+
+| File | What it does |
+|---|---|
+| `poem_creator.py` | `Line` (syllables, stress, rhyme) and `DataBase` classes, poem assembly |
+| `text_to_data.py` | Converts source texts into SQLite databases |
+| `Botik.py` | Async Telegram bot built with `python-telegram-bot` |
+| `conf.py` | Bot configuration |
+| `Files/` | Source texts |
+
+## How to run
+
+```bash
+pip install python-telegram-bot nltk
+python -c "import nltk; nltk.download('cmudict')"
+python text_to_data.py   # only if you change the source texts
+# put your bot token into conf.py (TOKEN), never commit it
+python Botik.py
+```
